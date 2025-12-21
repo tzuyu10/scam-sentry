@@ -172,7 +172,6 @@ Patterns Found:
 
 **Project for**: COSC 302: Automata and Language Theory  
 **Group**: Group 6, BSCS 3-5  
-**Institution**: [Your University]
 
 ### Team Members
 - Cansino, Florence Lee F.
