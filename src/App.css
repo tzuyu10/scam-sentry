@@ -59,6 +59,16 @@ button:hover {
   background-color: #0056b3;
 }
 
+.clear-button {
+  background-color: #6c757d;
+  margin-right: 100px;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px; /* space between buttons */
+}
+
 /* Result section */
 .result {
   margin-top: 25px;
@@ -83,3 +93,4 @@ button:hover {
   margin-bottom: 6px;
   font-size: 14px;
 }
+

@@ -1,4 +1,4 @@
-import type { Match, Category } from '../types/types';
+import type { Match} from '../types/types';
 
 export class URLDFA {
   private regexes: Array<{ reg: RegExp; weight: number }> = [];
