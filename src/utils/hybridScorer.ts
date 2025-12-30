@@ -46,9 +46,14 @@ function extractFeatures(
     categories.add(m.category);
   }
 
+  // Trim totalWeight to 2 decimal places
+  const totalWeight = parseFloat(
+    scan.matches.reduce((s, m) => s + m.weight, 0).toFixed(2)
+  );
+
   return {
     totalMatches: scan.matches.length,
-    totalWeight: scan.matches.reduce((s, m) => s + m.weight, 0),
+    totalWeight,
     uniqueCategories: categories.size,
     hasURL: categories.has('URL') ? 1 : 0,
     hasPhishing: categories.has('PHISHING') ? 1 : 0,
@@ -64,12 +69,12 @@ export function hybridAnalyze(scan: ScanResult, text: string) {
   const features = extractFeatures(scan, text);
   const mlConfidence = mlPredict(features);
 
-  const dfaScore = scan.score;
-  const mlScore = Math.round(mlConfidence * 100);
+  const dfaScore = parseFloat(scan.score.toFixed(2));
+  const mlScore = parseFloat((mlConfidence * 100).toFixed(2));
 
   // weighted hybrid
-  const hybridScore = Math.round(
-    dfaScore * 0.5 + mlScore * 0.5
+  const hybridScore = parseFloat(
+    (dfaScore * 0.5 + mlScore * 0.5).toFixed(2)
   );
 
   let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';

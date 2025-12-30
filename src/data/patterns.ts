@@ -1,263 +1,339 @@
 import type { Category } from '../types/types';
 
-type PatternDef = { keyword: string; weight: number };
+/**
+ * Pattern Definition for DFA Construction
+ * Each pattern represents a complete sequence of characters that will be
+ * converted into a state path in the DFA: q₀ → q₁ → q₂ → ... → qₙ
+ */
+type PatternDef = { 
+  keyword: string;  // Character sequence for DFA path construction
+  weight: number;   // Output weight λ(qₙ) for accepting state
+};
 
+/**
+ * DFA Pattern Lookup Table
+ * 
+ * Formal Mapping: Category → Pattern Set → DFA Construction
+ * 
+ * For each category C and pattern P:
+ * 1. P.keyword defines the character sequence σ₁σ₂...σₙ
+ * 2. DFA builds state path: δ(q₀, σ₁) → q₁, δ(q₁, σ₂) → q₂, ..., δ(qₙ₋₁, σₙ) → qₙ
+ * 3. qₙ becomes accepting state with output λ(qₙ) = {pattern: P.keyword, weight: P.weight}
+ * 
+ * All patterns are literal character sequences - NO REGEX.
+ * The Aho-Corasick DFA processes these character-by-character.
+ */
 export const PATTERNS: Record<Category, PatternDef[]> = {
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * FSA 1: URGENCY DETECTION DFA
+   * ═══════════════════════════════════════════════════════════════════════
+   * 
+   * Objective: Detect temporal urgency and call-to-action phrases
+   * 
+   * Example DFA Path for "act now":
+   * q₀ --a--> q₁ --c--> q₂ --t--> q₃ --[space]--> q₄ --n--> q₅ --o--> q₆ --w--> q₇
+   * λ(q₇) = {pattern: "act now", weight: 0.85}
+   * 
+   * Research Foundation:
+   * - ABS-CBN/Whoscall (2025): Urgent offers like credit limit increases rush victims
+   * - BPI (2025): "Act now before it's too late!" is primary red flag
+   */
   URGENCY: [
-    // Critical urgency (0.90-0.95): Account threats
-    { keyword: 'suspended', weight: 0.95 },        // Account suspension threat (highest urgency)
-    { keyword: 'expires', weight: 0.90 },          // Expiration creates immediate scarcity
-    { keyword: 'within 24', weight: 0.92 },        // Specific deadline pressure
-    { keyword: 'limited time', weight: 0.90 },     // Scarcity principle exploitation
-    { keyword: 'today only', weight: 0.90 },       // Extreme time constraint
+    // High urgency multi-word (0.80-0.85): Account threats with context
+    { keyword: 'account will be suspended', weight: 0.85 },
+    { keyword: 'expires within 24 hours', weight: 0.83 },
+    { keyword: 'limited time offer', weight: 0.78 },
+    { keyword: 'expire today', weight: 0.80 },
+    { keyword: 'urgent security alert', weight: 0.85 },
+    { keyword: 'immediate action required', weight: 0.82 },
+    { keyword: 'final warning', weight: 0.80 },
     
-    // High urgency (0.85-0.89): Strong pressure tactics
-    { keyword: 'act now', weight: 0.85 },          // Direct action command
-    { keyword: 'urgent', weight: 0.90 },           // Explicit urgency declaration
-    { keyword: 'immediate', weight: 0.87 },        // No-delay implication
-    { keyword: 'last chance', weight: 0.88 },      // Final opportunity pressure
-    { keyword: 'now na', weight: 0.85 },           // Filipino urgency (Taglish)
-    { keyword: 'asap', weight: 0.82 },             // Abbreviated urgency
+    // Medium urgency (0.65-0.79): Strong pressure but generic
+    { keyword: 'suspended', weight: 0.72 }, // Reduced - single word
+    { keyword: 'expires', weight: 0.68 },
+    { keyword: 'act now', weight: 0.70 },
+    { keyword: 'urgent', weight: 0.70 }, // Reduced significantly
+    { keyword: 'last chance', weight: 0.75 },
+    { keyword: 'expiring soon', weight: 0.73 },
+    { keyword: 'claim now', weight: 0.72 },
+    { keyword: 'register now', weight: 0.68 },
     
-    // Medium urgency (0.75-0.84): Moderate pressure
-    { keyword: 'i-click', weight: 0.80 },          // Call-to-action (Filipino context)
-    { keyword: 'avail', weight: 0.75 },            // Opportunity-based urgency
-    { keyword: 'hurry', weight: 0.85 },            // Rush inducement
-    { keyword: 'expiring', weight: 0.88 },         // Active expiration
-    { keyword: 'agad', weight: 0.80 },             // "Immediately" in Filipino
-    { keyword: 'mabilis', weight: 0.78 },          // "Fast/quick" in Filipino
-    { keyword: 'expire', weight: 0.88 },           // Variant of expires
-    
-    // Contextual urgency (0.75-0.82): Combined with other cues
-    { keyword: 'i-claim', weight: 0.82 },          // Claim action (Filipino)
-    { keyword: 'mag-register na', weight: 0.85 },  // "Register now" (Filipino)
-    { keyword: 'para makuha', weight: 0.78 },      // "To get/obtain" (creates dependency)
-    { keyword: 'bago mag', weight: 0.75 },         // "Before" (deadline implication)
-    { keyword: 'hanggang ngayon', weight: 0.82 },  // "Until now" (time pressure)
+    // Lower urgency (0.50-0.64): Common but needs context
+    { keyword: 'immediate', weight: 0.60 },
+    { keyword: 'now na', weight: 0.62 },
+    { keyword: 'asap', weight: 0.58 },
+    { keyword: 'hurry', weight: 0.62 },
+    { keyword: 'expire', weight: 0.60 },
+    { keyword: 'avail', weight: 0.55 }, // Very generic
+    { keyword: 'i-click', weight: 0.58 },
+    { keyword: 'agad', weight: 0.58 },
+    { keyword: 'mabilis', weight: 0.55 },
   ],
 
   /**
-   * FSA 2: Financial/Monetary Detection
+   * ═══════════════════════════════════════════════════════════════════════
+   * FSA 2: FINANCIAL/MONETARY DETECTION DFA
+   * ═══════════════════════════════════════════════════════════════════════
+   * 
+   * Objective: Identify monetary requests, loan offers, prizes, investments
+   * 
+   * Example DFA Path for "loan":
+   * q₀ --l--> q₁ --o--> q₂ --a--> q₃ --n--> q₄
+   * λ(q₄) = {pattern: "loan", weight: 0.85}
    * 
    * Research Foundation:
    * - Whoscall (2025): Loan/reward offers are "mainstay" in PH scam reports
    * - Tookitaki (2025): Investment scams caused PHP 100B+ losses in 2024
-   * - ArXiv (2025): Greed framing showed p=0.155 (moderate but inconsistent effectiveness)
-   * - Project Document: Financial requests combined with urgency = high-risk signature
-   * 
-   * Weight Justification:
-   * - High-commitment financial (0.85-0.92): Loans, instant money, large profits
-   * - Reward/prize patterns (0.80-0.88): Winner declarations, claims
-   * - General financial terms (0.68-0.78): Money, cash, earn (context-dependent)
    */
   FINANCIAL: [
-    // Critical financial patterns (0.88-0.92): Instant money schemes
-    { keyword: 'instant pera', weight: 0.92 },          // "Instant money" - too good to be true
-    { keyword: 'mabilis na yaman', weight: 0.92 },      // "Quick wealth" - get-rich-quick
-    { keyword: 'kumita ng malaki', weight: 0.90 },      // "Earn big" - unrealistic promise
-    { keyword: 'instant loan', weight: 0.90 },          // Immediate approval red flag
-    { keyword: 'quick loan', weight: 0.90 },            // Speed emphasis (unusual for real loans)
+    // High-risk multi-word (0.78-0.85): Specific scam patterns
+    { keyword: 'instant pera', weight: 0.82 },
+    { keyword: 'instant money', weight: 0.82 },
+    { keyword: 'mabilis na yaman', weight: 0.83 },
+    { keyword: 'kumita ng malaki', weight: 0.80 },
+    { keyword: 'guaranteed profit', weight: 0.80 },
+    { keyword: 'you are the winner', weight: 0.85 },
+    { keyword: 'claim your prize', weight: 0.78 },
+    { keyword: 'free money', weight: 0.75 },
     
-    // High-risk financial (0.85-0.89): Direct money requests
-    { keyword: 'cash loan', weight: 0.88 },             // Direct loan offer
-    { keyword: 'pautang', weight: 0.87 },               // Filipino "loan"
-    { keyword: 'prize', weight: 0.85 },                 // Unsolicited prize
-    { keyword: 'reward', weight: 0.85 },                // Unsolicited reward
-    { keyword: 'winner', weight: 0.88 },                // Winner declaration
-    { keyword: 'claim', weight: 0.85 },                 // Action to receive money
-    { keyword: 'payout', weight: 0.85 },                // Payment distribution
-    { keyword: 'free load', weight: 0.85 },             // Free mobile load (common PH scam)
-    { keyword: 'dagdag kita', weight: 0.85 },           // "Additional income"
-    { keyword: 'loan', weight: 0.85 },                  // Generic loan offer
-    { keyword: 'utang', weight: 0.85 },                 // Filipino "debt/loan"
-    { keyword: 'pwedeng kumita', weight: 0.85 },        // "Can earn money"
-    { keyword: 'libre lang', weight: 0.85 },            // "Free only" (too good to be true)
+    // Medium financial (0.65-0.77): Direct money keywords
+    { keyword: 'instant loan', weight: 0.75 },
+    { keyword: 'quick loan', weight: 0.75 },
+    { keyword: 'cash loan', weight: 0.73 },
+    { keyword: 'you won', weight: 0.72 },
+    { keyword: 'pautang', weight: 0.70 },
+    { keyword: 'prize', weight: 0.68 }, // Single word - reduced
+    { keyword: 'reward', weight: 0.68 },
+    { keyword: 'winner', weight: 0.72 },
+    { keyword: 'claim', weight: 0.65 }, // Very generic
+    { keyword: 'payout', weight: 0.70 },
+    { keyword: 'free load', weight: 0.72 },
+    { keyword: 'dagdag kita', weight: 0.70 },
     
-    // Medium financial (0.75-0.84): General financial interest
-    { keyword: 'congratulations', weight: 0.82 },       // Often precedes prize scams
-    { keyword: 'investment', weight: 0.78 },            // Investment opportunity
-    { keyword: 'profit', weight: 0.80 },                // Profit promise
-    { keyword: 'cash out', weight: 0.82 },              // Withdrawal action
-    { keyword: 'remittance', weight: 0.80 },            // Money transfer (context matters)
-    { keyword: 'apply loan', weight: 0.85 },            // Loan application prompt
-    { keyword: 'kumita', weight: 0.82 },                // "Earn" in Filipino
-    { keyword: 'kikita', weight: 0.80 },                // "Will earn" in Filipino
-    { keyword: 'tumubo', weight: 0.78 },                // "Grow/increase" (investment context)
-    { keyword: 'yaman', weight: 0.75 },                 // "Wealth" in Filipino
-    { keyword: 'won', weight: 0.80 },                   // Past tense winner
-    { keyword: 'win', weight: 0.75 },                   // Can be legitimate context
-    { keyword: 'income', weight: 0.75 },                // General income term
-    { keyword: 'extra income', weight: 0.82 },          // Side income offer
-    { keyword: 'php', weight: 0.75 },                   // Philippine Peso mention
-    { keyword: 'pesos', weight: 0.75 },                 // Currency mention
-    
-    // Low-medium financial (0.68-0.74): Broad terms needing context
-    { keyword: 'earn', weight: 0.72 },                  // Very common word
-    { keyword: 'pera', weight: 0.80 },                  // "Money" in Filipino
-    { keyword: 'cash', weight: 0.70 },                  // Generic cash mention
-    { keyword: 'money', weight: 0.68 },                 // Very generic
-    { keyword: 'transfer', weight: 0.70 },              // Could be legitimate
-    { keyword: 'libre', weight: 0.78 },                 // "Free" in Filipino
+    // Lower financial (0.50-0.64): Generic terms
+    { keyword: 'loan', weight: 0.60 }, // Very common
+    { keyword: 'congratulations', weight: 0.62 },
+    { keyword: 'investment', weight: 0.58 },
+    { keyword: 'profit', weight: 0.60 },
+    { keyword: 'win', weight: 0.52 }, // Extremely generic
+    { keyword: 'income', weight: 0.52 },
+    { keyword: 'extra income', weight: 0.65 },
+    { keyword: 'kumita', weight: 0.62 },
+    { keyword: 'earn', weight: 0.50 }, // Very generic
+    { keyword: 'pera', weight: 0.58 },
+    { keyword: 'cash', weight: 0.50 },
+    { keyword: 'money', weight: 0.48 }, // Extremely generic
+    { keyword: 'libre', weight: 0.58 },
   ],
 
   /**
-   * FSA 3: Phishing Detection
+   * ═══════════════════════════════════════════════════════════════════════
+   * FSA 3: PHISHING DETECTION DFA
+   * ═══════════════════════════════════════════════════════════════════════
+   * 
+   * Objective: Detect account verification requests and credential phishing
+   * 
+   * Example DFA Path for "validate":
+   * q₀ --v--> q₁ --a--> q₂ --l--> q₃ --i--> q₄ --d--> q₅ --a--> q₆ --t--> q₇ --e--> q₈
+   * λ(q₈) = {pattern: "validate", weight: 0.90}
    * 
    * Research Foundation:
    * - Feedzai (2024): Phishing = #1 threat, PHP 623M losses, 6,595 incidents
-   * - NIST Phish Scale: Account verification is high-premise-alignment for users
    * - Cyberint (2025): True Login Phishing automates credential exfiltration
-   * - Abnormal AI (2025): OTP/credential requests flagged as highest risk
-   * 
-   * Weight Justification:
-   * - Critical phishing (0.92-0.95): OTP requests, identity confirmation, security alerts
-   * - High phishing (0.85-0.91): Account actions, verification requests
-   * - Medium phishing (0.80-0.88): General validation, update prompts
    */
   PHISHING: [
-    // Critical phishing (0.92-0.95): Credential/OTP theft
-    { keyword: 'enter otp', weight: 0.95 },             // Direct OTP request (critical)
-    { keyword: 'confirm identity', weight: 0.95 },      // Identity verification attempt
-    { keyword: 'security alert', weight: 0.95 },        // Fake security warning
-    { keyword: 'otp code', weight: 0.93 },              // OTP variation
-    { keyword: 'send otp', weight: 0.92 },              // OTP action request
-    { keyword: 'verification code', weight: 0.92 },     // Code request
-    { keyword: 'suspicious activity', weight: 0.93 },   // Fabricated threat
+    // Critical multi-word phishing (0.85-0.90): Specific credential theft
+    { keyword: 'enter your otp', weight: 0.90 },
+    { keyword: 'send your otp', weight: 0.88 },
+    { keyword: 'verify your identity', weight: 0.88 },
+    { keyword: 'confirm your identity', weight: 0.88 },
+    { keyword: 'urgent security alert', weight: 0.90 },
+    { keyword: 'suspicious activity detected', weight: 0.87 },
+    { keyword: 'unusual activity detected', weight: 0.85 },
     
-    // High phishing (0.88-0.91): Account takeover attempts
-    { keyword: 'verify account', weight: 0.92 },        // Account verification request
-    { keyword: 'verify your', weight: 0.90 },           // Personal verification
-    { keyword: 'suspended account', weight: 0.92 },     // Account threat + urgency
-    { keyword: 'account suspended', weight: 0.92 },     // Variant phrasing
-    { keyword: 'locked account', weight: 0.90 },        // Account lockout claim
-    { keyword: 'account locked', weight: 0.90 },        // Variant phrasing
-    { keyword: 'security code', weight: 0.90 },         // Security code request
-    { keyword: 'validate', weight: 0.90 },              // Validation requirement
-    { keyword: 'complete verification', weight: 0.92 }, // Multi-step phishing
-    { keyword: 'confirm your', weight: 0.88 },          // Confirmation request
-    { keyword: 'update your', weight: 0.88 },           // Update prompt
+    // High phishing (0.75-0.84): Account actions
+    { keyword: 'verify your account', weight: 0.83 },
+    { keyword: 'suspended account', weight: 0.82 },
+    { keyword: 'account suspended', weight: 0.82 },
+    { keyword: 'locked account', weight: 0.80 },
+    { keyword: 'account locked', weight: 0.80 },
+    { keyword: 'complete verification', weight: 0.82 },
+    { keyword: 'security alert', weight: 0.80 },
+    { keyword: 'verification code', weight: 0.78 },
+    { keyword: 'security code', weight: 0.77 },
     
-    // Medium phishing (0.80-0.87): General credential requests
-    { keyword: 'update info', weight: 0.85 },           // Information update
-    { keyword: 'blocked', weight: 0.85 },               // Account blocked claim
-    { keyword: 'restricted', weight: 0.85 },            // Access restriction
-    { keyword: 'failed transaction', weight: 0.85 },    // Transaction failure (fake)
-    { keyword: 'payment failed', weight: 0.85 },        // Payment issue (fake)
-    { keyword: 'transaction failed', weight: 0.85 },    // Transaction problem
-    { keyword: 'delayed payment', weight: 0.82 },       // Payment delay claim
-    { keyword: 'i-verify', weight: 0.87 },              // Filipino verification
-    { keyword: 'i-update', weight: 0.85 },              // Filipino update
-    { keyword: 'i-confirm', weight: 0.87 },             // Filipino confirmation
-    { keyword: 'mag-verify', weight: 0.87 },            // "Verify" command in Filipino
-    { keyword: 'kailangan i-verify', weight: 0.90 },    // "Need to verify"
-    { keyword: 'para ma-verify', weight: 0.88 },        // "To be verified"
+    // Medium phishing (0.60-0.74): General requests
+    { keyword: 'verify account', weight: 0.72 },
+    { keyword: 'update your account', weight: 0.73 },
+    { keyword: 'confirm your account', weight: 0.73 },
+    { keyword: 'enter otp', weight: 0.70 }, // Still serious but shorter
+    { keyword: 'otp code', weight: 0.68 },
+    { keyword: 'failed transaction', weight: 0.70 },
+    { keyword: 'payment failed', weight: 0.70 },
+    { keyword: 'i-verify', weight: 0.72 },
+    { keyword: 'kailangan i-verify', weight: 0.75 },
+    
+    // Lower phishing (0.50-0.59): Generic single words
+    { keyword: 'verify', weight: 0.58 }, // Very generic
+    { keyword: 'validate', weight: 0.60 },
+    { keyword: 'otp', weight: 0.62 }, // Single word
+    { keyword: 'blocked', weight: 0.58 },
+    { keyword: 'restricted', weight: 0.58 },
+    { keyword: 'update', weight: 0.50 }, // Extremely generic
+    { keyword: 'confirm', weight: 0.52 },
   ],
 
   /**
-   * FSA 4: Impersonation Detection
+   * ═══════════════════════════════════════════════════════════════════════
+   * FSA 4: IMPERSONATION DETECTION DFA
+   * ═══════════════════════════════════════════════════════════════════════
+   * 
+   * Objective: Identify claims of authority or impersonation of entities
+   * 
+   * Example DFA Path for "gcash":
+   * q₀ --g--> q₁ --c--> q₂ --a--> q₃ --s--> q₄ --h--> q₅
+   * λ(q₅) = {pattern: "gcash", weight: 0.92}
    * 
    * Research Foundation:
-   * - Cyberint (2025): Enhanced brand impersonation targeting financial sector
-   * - Williams et al. (2014): Authority cues increase click likelihood significantly
-   * - Psychological Research (2023): Authority is most common tactic (with reciprocation)
-   * - Project Document: Local impersonation (BSP, BIR, telcos, banks) is primary vector
-   * 
-   * Weight Justification:
-   * - Critical impersonation (0.90-0.92): Government agencies, central bank
-   * - High impersonation (0.85-0.89): Major banks, e-wallets, official claims
-   * - Medium impersonation (0.80-0.84): Telcos, authority claims, support teams
+   * - Cyberint (2024-2025): Enhanced brand impersonation in financial sector
+   * - Williams et al. (2014): Authority cues increase click likelihood
    */
   IMPERSONATION: [
-    // Critical impersonation (0.90-0.92): Government/regulatory authorities
-    { keyword: 'gcash', weight: 0.92 },                 // #1 e-wallet (highly targeted)
-    { keyword: 'bsp', weight: 0.92 },                   // Central bank (high authority)
-    { keyword: 'bir', weight: 0.92 },                   // Tax bureau (fear factor)
-    { keyword: 'paymaya', weight: 0.90 },               // Major e-wallet
+    // Critical multi-word impersonation (0.80-0.88): Context with brand
+    { keyword: 'gcash official', weight: 0.88 },
+    { keyword: 'from gcash', weight: 0.85 },
+    { keyword: 'bsp notification', weight: 0.85 },
+    { keyword: 'from your bank', weight: 0.82 },
+    { keyword: 'bank alert', weight: 0.80 },
+    { keyword: 'security team from', weight: 0.82 },
     
-    // High impersonation (0.85-0.89): Major financial institutions
-    { keyword: 'bpi', weight: 0.87 },                   // Top bank in PH
-    { keyword: 'bdo', weight: 0.87 },                   // Largest bank in PH
-    { keyword: 'metrobank', weight: 0.87 },             // Major bank
-    { keyword: 'unionbank', weight: 0.85 },             // Digital banking leader
-    { keyword: 'security bank', weight: 0.85 },         // Major bank
-    { keyword: 'landbank', weight: 0.85 },              // Government bank
-    { keyword: 'pnb', weight: 0.85 },                   // Philippine National Bank
-    { keyword: 'rcbc', weight: 0.85 },                  // Major bank
-    { keyword: 'coins.ph', weight: 0.88 },              // Crypto/e-wallet platform
-    { keyword: 'grabpay', weight: 0.88 },               // Popular e-wallet
-    { keyword: 'sss', weight: 0.88 },                   // Social Security System
-    { keyword: 'philhealth', weight: 0.88 },            // Health insurance
-    { keyword: 'pag-ibig', weight: 0.88 },              // Housing fund
-    { keyword: 'lgu', weight: 0.85 },                   // Local government
-    { keyword: 'dti', weight: 0.85 },                   // Trade & Industry dept
-    { keyword: 'government', weight: 0.85 },            // Government claim
-    { keyword: 'security team', weight: 0.87 },         // Security authority claim
-    { keyword: 'bank alert', weight: 0.87 },            // Bank warning message
-    { keyword: 'from your bank', weight: 0.88 },        // Bank sender claim
-    { keyword: 'authorized', weight: 0.85 },            // Authorization claim
-    { keyword: 'home credit', weight: 0.85 },           // Major lending app
+    // High impersonation (0.65-0.79): Major institutions with context
+    { keyword: 'bpi bank', weight: 0.75 },
+    { keyword: 'bdo bank', weight: 0.75 },
+    { keyword: 'bangko sentral', weight: 0.78 },
+    { keyword: 'government agency', weight: 0.72 },
+    { keyword: 'authorized representative', weight: 0.70 },
     
-    // Medium impersonation (0.80-0.84): Telcos, support, generic authority
-    { keyword: 'smart', weight: 0.82 },                 // Major telco
-    { keyword: 'globe', weight: 0.82 },                 // Major telco
-    { keyword: 'pldt', weight: 0.82 },                  // Major telco
-    { keyword: 'dito', weight: 0.80 },                  // Newer telco
-    { keyword: 'customer service', weight: 0.82 },      // Service impersonation
-    { keyword: 'support team', weight: 0.82 },          // Support impersonation
-    { keyword: 'cashalo', weight: 0.83 },               // Lending app
-    { keyword: 'tala', weight: 0.83 },                  // Lending app
-    { keyword: 'official', weight: 0.80 },              // Official claim (generic)
-    { keyword: 'representative', weight: 0.80 },        // Representative claim
-    { keyword: 'sec', weight: 0.82 },                   // Securities commission
-    { keyword: 'fintech', weight: 0.75 },               // Fintech claim (broad)
+    // Medium impersonation (0.50-0.64): Single brand names
+    { keyword: 'gcash', weight: 0.62 }, // MAJOR reduction - too common
+    { keyword: 'paymaya', weight: 0.60 },
+    { keyword: 'bsp', weight: 0.65 },
+    { keyword: 'bir', weight: 0.65 },
+    { keyword: 'bpi', weight: 0.55 }, // Very generic
+    { keyword: 'bdo', weight: 0.55 },
+    { keyword: 'metrobank', weight: 0.58 },
+    { keyword: 'unionbank', weight: 0.55 },
+    { keyword: 'landbank', weight: 0.55 },
+    { keyword: 'grabpay', weight: 0.60 },
+    { keyword: 'coins.ph', weight: 0.60 },
+    { keyword: 'sss', weight: 0.60 },
+    { keyword: 'philhealth', weight: 0.60 },
+    { keyword: 'pag-ibig', weight: 0.60 },
+    
+    // Lower impersonation (0.40-0.54): Generic terms
+    { keyword: 'smart', weight: 0.48 }, // Too generic
+    { keyword: 'globe', weight: 0.48 },
+    { keyword: 'pldt', weight: 0.50 },
+    { keyword: 'government', weight: 0.52 },
+    { keyword: 'customer service', weight: 0.50 },
+    { keyword: 'support team', weight: 0.50 },
+    { keyword: 'official', weight: 0.45 }, // Very generic
+    { keyword: 'authorized', weight: 0.48 },
   ],
 
   /**
-   * FSA 5: URL Pattern Detection
+   * ═══════════════════════════════════════════════════════════════════════
+   * FSA 5: URL PATTERN DETECTION DFA
+   * ═══════════════════════════════════════════════════════════════════════
+   * 
+   * Objective: Detect suspicious URL structures and link patterns
+   * 
+   * Example DFA Path for "bit.ly/":
+   * q₀ --b--> q₁ --i--> q₂ --t--> q₃ --.--> q₄ --l--> q₅ --y--> q₆ --/--> q₇
+   * λ(q₇) = {pattern: "bit.ly/", weight: 0.90}
    * 
    * Research Foundation:
    * - Home Credit (2025): Smishing involves clicking malicious links
-   * - Whoscall (2025): "Any SMS from unknown number with link is a text scam"
-   * - SecurityScorecard (2025): Spoofed domains and URL manipulation are top vectors
-   * - Project Document: URL patterns enable smishing → fake login pages
+   * - Whoscall (2025): "Any SMS from unknown with link is text scam"
    * 
-   * Weight Justification:
-   * - Critical URL patterns (0.92-0.95): IP addresses, HTTP for banks, misspellings
-   * - High URL patterns (0.85-0.91): URL shorteners, suspicious TLDs
-   * - Medium URL patterns (0.75-0.84): Multiple subdomains, suspicious parameters
+   * NOTE: Complex regex patterns converted to common literal indicators
    */
   URL: [
-    // Critical URL patterns (0.92-0.95): Obvious malicious indicators
-    { keyword: String(/https?:\/\/(?:\d{1,3}\.){3}\d{1,3}/), weight: 0.95 },  
-    // IP address format - no legitimate bank/service uses IPs
+    // Critical URL patterns (0.85-0.92): Obvious malicious indicators
     
-    { keyword: String(/^http:\/\/(www\.)?(gcash|bpi|bdo|metrobank|paymaya)/), weight: 0.95 },
-    // HTTP (not HTTPS) for sensitive sites - major red flag
+    // HTTP (not HTTPS) for financial sites
+    { keyword: 'http://gcash', weight: 0.92 },
+    { keyword: 'http://bpi', weight: 0.92 },
+    { keyword: 'http://bdo', weight: 0.92 },
+    { keyword: 'http://metrobank', weight: 0.90 },
+    { keyword: 'http://paymaya', weight: 0.90 },
     
-    { keyword: String(/https?:\/\/\w*gcas\w*\.(com|ph)/), weight: 0.92 },
-    // GCash misspelling (gcas, gcash1, etc.)
+    // IP address patterns (common formats)
+    { keyword: '://192.168.', weight: 0.90 },
+    { keyword: 'http://192', weight: 0.88 },
+    { keyword: 'https://192', weight: 0.85 },
     
-    // High URL patterns (0.85-0.91): Common scam techniques
-    { keyword: String(/https?:\/\/(bit\.ly|tinyurl|short\.link|t\.co|goo\.gl|ow\.ly|is\.gd|buff\.ly)\/\w+/), weight: 0.90 },
-    // URL shorteners - hide destination
+    // Misspelled domains
+    { keyword: 'gcas.com', weight: 0.88 },
+    { keyword: 'gcash1.com', weight: 0.87 },
+    { keyword: 'gcash-ph.com', weight: 0.85 },
+    { keyword: 'bpi-bank.com', weight: 0.85 },
+    { keyword: 'bdo-online.com', weight: 0.85 },
     
-    { keyword: String(/https?:\/\/\w+\.(tk|ml|ga|cf|gq|xyz|top|click)\b/), weight: 0.88 },
-    // Suspicious TLDs - free/cheap domains favored by scammers
+    // High URL patterns (0.70-0.84): Common scam techniques
     
-    { keyword: String(/https?:\/\/\w*bpi\w*\.(com|ph)/), weight: 0.85 },
-    // BPI misspelling variants
+    // URL shorteners
+    { keyword: 'bit.ly/', weight: 0.78 }, // Reduced - common legitimate use
+    { keyword: 'tinyurl.com/', weight: 0.78 },
+    { keyword: 't.co/', weight: 0.72 }, // Twitter links
+    { keyword: 'goo.gl/', weight: 0.75 },
     
-    { keyword: String(/https?:\/\/\w*bdo\w*\.(com|ph)/), weight: 0.85 },
-    // BDO misspelling variants
+    // Suspicious TLDs
+    { keyword: '.tk/', weight: 0.82 },
+    { keyword: '.ml/', weight: 0.82 },
+    { keyword: '.ga/', weight: 0.82 },
+    { keyword: '.xyz/', weight: 0.75 },
+    { keyword: '.tk', weight: 0.78 },
+    { keyword: '.ml', weight: 0.78 },
     
-    { keyword: String(/https?:\/\/\w*paymaya\w*\.(com|ph)/), weight: 0.85 },
-    // PayMaya misspelling variants
+    // Suspicious query parameters
+    { keyword: '?verify=', weight: 0.75 },
+    { keyword: '?token=', weight: 0.75 },
+    { keyword: '?confirm=', weight: 0.75 },
+    { keyword: '&verify=', weight: 0.73 },
     
-    { keyword: String(/https?:\/\/[^\s]+\?(ref|id|token|verify|confirm)=[a-zA-Z0-9]{20,}/), weight: 0.85 },
-    // Suspicious query parameters - often used for tracking/phishing
-    
-    // Medium URL patterns (0.75-0.84): Moderately suspicious
-    { keyword: String(/https?:\/\/(?:\w+\.){3,}\w+\.\w{2,3}/), weight: 0.78 },
-    // Multiple subdomains (3+) - often used to obscure real domain
+    // Lower URL patterns (0.55-0.69): Needs strong context
+    { keyword: 'http://', weight: 0.60 }, // HTTP alone is suspicious but common
+    { keyword: 'https://', weight: 0.45 }, // HTTPS is normal
+    { keyword: 'click here:', weight: 0.62 },
+    { keyword: 'click link:', weight: 0.62 },
   ],
 };
+
+/**
+ * Pattern Statistics (Auto-generated metadata)
+ * This helps validate the DFA construction matches the formal specification
+ */
+export const PATTERN_STATS = {
+  URGENCY: PATTERNS.URGENCY.length,
+  FINANCIAL: PATTERNS.FINANCIAL.length,
+  PHISHING: PATTERNS.PHISHING.length,
+  IMPERSONATION: PATTERNS.IMPERSONATION.length,
+  URL: PATTERNS.URL.length,
+  TOTAL: Object.values(PATTERNS).reduce((sum, arr) => sum + arr.length, 0),
+};
+
+/**
+ * Helper: Get all patterns as flat array for DFA construction
+ */
+export function getAllPatterns(): PatternDef[] {
+  return Object.values(PATTERNS).flat();
+}
+
+/**
+ * Helper: Get patterns by category for modular DFA construction
+ */
+export function getPatternsByCategory(category: Category): PatternDef[] {
+  return PATTERNS[category];
+}
