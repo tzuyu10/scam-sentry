@@ -151,7 +151,7 @@ function App() {
 
               {/* Extracted Features */}
               <div className="section">
-                <h3 className="section-title">Extracted Features (ML Analysis)</h3>
+                <h3 className="section-title">Extracted Features</h3>
                 <div className="features-grid">
                   {Object.entries(hybrid.features).map(([key, value]: [string, any]) => (
                     <div key={key} className="feature-item">

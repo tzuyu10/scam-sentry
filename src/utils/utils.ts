@@ -53,8 +53,7 @@ const dfaConfigs: DFAConfig[] = [
   { dfa: new AhoCorasickDFA(PATTERNS.IMPERSONATION.patterns), category: 'IMPERSONATION' }
 ];
 
-const urlDFA = new URLDFA(PATTERNS.URL.patterns);
-
+const urlDFA = new URLDFA();
 /**
  * Scoring Configuration - DEFLATED TO PREVENT INFLATION
  * 
