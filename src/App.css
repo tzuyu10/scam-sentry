@@ -87,7 +87,7 @@ body {
 .message-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 2px solid #e2e8f0;
+  border: 0.888px solid #e2e8f0;
   border-radius: 0.5rem;
   font-size: 1rem;
   color: #1e293b;
@@ -173,9 +173,14 @@ body {
   border-left: 4px solid;
 }
 
+.risk-banner.risk-critical {
+  background: #fef2f2;
+  border-color: #900c0c;
+}
+
 .risk-banner.risk-high {
   background: #fef2f2;
-  border-color: #dc2626;
+  border-color: #e6420b
 }
 
 .risk-banner.risk-medium {
@@ -430,6 +435,11 @@ body {
   font-size: 1.25rem;
   font-weight: bold;
   margin-bottom: 0.5rem;
+}
+
+.footer-brand img {
+  width: 2rem;
+  height: 2rem;
 }
 
 .footer-heading {

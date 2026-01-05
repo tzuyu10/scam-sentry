@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Shield, AlertTriangle, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { ShieldAlert, Shield, AlertTriangle, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { scanMessage } from './utils/utils';
 import { hybridAnalyze } from './utils/hybridScorer';
 import type { ScanResult } from './types/types';
 import ScamSentryLogo from './assets/ScamSentryLogoDark.svg';
+import ScamSentryLogo1 from './assets/ScamSentryLogo.svg';
 import './App.css';
 
 function App() {
@@ -29,7 +30,8 @@ function App() {
 
   const getRiskColor = (level: string) => {
     switch (level?.toUpperCase()) {
-      case 'HIGH': return 'text-red-600';
+      case 'CRITICAL': return 'text-red-600';
+      case 'HIGH': return 'text-orange-600';
       case 'MEDIUM': return 'text-yellow-600';
       case 'LOW': return 'text-green-600';
       default: return 'text-gray-600';
@@ -38,6 +40,8 @@ function App() {
 
   const getRiskIcon = (level: string) => {
     switch (level?.toUpperCase()) {
+
+      case 'CRITICAL': return <ShieldAlert className="w-6 h-6" />;
       case 'HIGH': return <XCircle className="w-6 h-6" />;
       case 'MEDIUM': return <AlertTriangle className="w-6 h-6" />;
       case 'LOW': return <CheckCircle className="w-6 h-6" />;
@@ -97,6 +101,7 @@ function App() {
                     <div>
                       <h2 className="risk-title">{hybrid.riskLevel} Risk Detected</h2>
                       <p className="risk-description">
+                        {hybrid.riskLevel === 'CRITICAL' && 'This message is extremely likely to be a scam. Immediate caution is advised.'}
                         {hybrid.riskLevel === 'HIGH' && 'This message shows strong signs of a scam. Do not respond or click any links.'}
                         {hybrid.riskLevel === 'MEDIUM' && 'This message contains suspicious elements. Verify sender authenticity before responding.'}
                         {hybrid.riskLevel === 'LOW' && 'This message appears relatively safe, but always stay vigilant.'}
@@ -172,7 +177,7 @@ function App() {
         <div className="footer-content">
           <div className="footer-section">
             <div className="footer-brand">
-              <Shield className="w-6 h-6" />
+              <img src={ScamSentryLogo1} alt="ScamSentry Logo White"/>
               <span>ScamSentry</span>
             </div>
             <p className="footer-text">Protecting users from digital scam messages</p>
