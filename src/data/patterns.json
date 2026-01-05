@@ -140,8 +140,11 @@
         { "keyword": "customer service", "weight": 0.50 },
         { "keyword": "support team", "weight": 0.50 },
         { "keyword": "official", "weight": 0.45 },
-        { "keyword": "authorized", "weight": 0.48 }
-      ]
+        { "keyword": "authorized", "weight": 0.48 },
+        { "keyword": "shopee", "weight": 0.55 },
+        { "keyword": "lazada", "weight": 0.55 }
+
+    ]
     },
     "URL": {
       "description": "Suspicious URL structures and link patterns",
