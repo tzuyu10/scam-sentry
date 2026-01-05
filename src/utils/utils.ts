@@ -1,6 +1,6 @@
 // src/utils/utils.ts
 
-import { PATTERNS } from '../data/patterns';
+import patternsData from '../data/patterns.json';
 import { AhoCorasickDFA } from '../classes/AhoCorasickDFA';
 import { URLDFA } from '../classes/URLDFA';
 import type { Match, ScanResult, Category } from '../types/types';
@@ -12,17 +12,48 @@ interface DFAConfig {
 }
 
 /**
+ * Extract patterns from JSON structure
+ */
+interface PatternEntry {
+  keyword: string;
+  weight: number;
+  length: number;
+  chars: string[];
+}
+
+interface PatternCategory {
+  description: string;
+  patterns: PatternEntry[];
+}
+
+interface PatternsJSON {
+  version: string;
+  generated: string;
+  description: string;
+  categories: {
+    URGENCY: PatternCategory;
+    FINANCIAL: PatternCategory;
+    PHISHING: PatternCategory;
+    IMPERSONATION: PatternCategory;
+    URL: PatternCategory;
+  };
+}
+
+// Type assertion for imported JSON
+const PATTERNS = (patternsData as PatternsJSON).categories;
+
+/**
  * Build DFAs ONCE (singleton instances)
  * DFA is immutable after construction (formal automata requirement)
  */
 const dfaConfigs: DFAConfig[] = [
-  { dfa: new AhoCorasickDFA(PATTERNS.URGENCY), category: 'URGENCY' },
-  { dfa: new AhoCorasickDFA(PATTERNS.FINANCIAL), category: 'FINANCIAL' },
-  { dfa: new AhoCorasickDFA(PATTERNS.PHISHING), category: 'PHISHING' },
-  { dfa: new AhoCorasickDFA(PATTERNS.IMPERSONATION), category: 'IMPERSONATION' }
+  { dfa: new AhoCorasickDFA(PATTERNS.URGENCY.patterns), category: 'URGENCY' },
+  { dfa: new AhoCorasickDFA(PATTERNS.FINANCIAL.patterns), category: 'FINANCIAL' },
+  { dfa: new AhoCorasickDFA(PATTERNS.PHISHING.patterns), category: 'PHISHING' },
+  { dfa: new AhoCorasickDFA(PATTERNS.IMPERSONATION.patterns), category: 'IMPERSONATION' }
 ];
 
-const urlDFA = new URLDFA(PATTERNS.URL);
+const urlDFA = new URLDFA(PATTERNS.URL.patterns);
 
 /**
  * Scoring Configuration - DEFLATED TO PREVENT INFLATION

@@ -1,5 +1,3 @@
-// src/utils/contextValidator.ts
-
 import type { Match, Category } from '../types/types';
 
 /**
