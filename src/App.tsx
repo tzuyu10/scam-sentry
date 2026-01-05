@@ -3,6 +3,7 @@ import { Shield, AlertTriangle, CheckCircle, XCircle, Trash2 } from 'lucide-reac
 import { scanMessage } from './utils/utils';
 import { hybridAnalyze } from './utils/hybridScorer';
 import type { ScanResult } from './types/types';
+import ScamSentryLogo from './assets/ScamSentryLogoDark.svg';
 import './App.css';
 
 function App() {
@@ -51,7 +52,7 @@ function App() {
           {/* Header */}
           <div className="header">
             <div className="header-title">
-              <Shield className="w-12 h-12 text-blue-600" />
+              <img src={ScamSentryLogo} alt="ScamSentry Logo"/>
               <h1>ScamSentry</h1>
             </div>
             <p className="header-subtitle">Scam Text Message Analyzation System</p>
