@@ -1,5 +1,3 @@
-// src/utils/utils.ts
-
 import patternsData from '../data/patterns.json';
 import { AhoCorasickDFA } from '../classes/AhoCorasickDFA';
 import { URLDFA } from '../classes/URLDFA';
