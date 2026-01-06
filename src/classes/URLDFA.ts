@@ -175,6 +175,11 @@ export class URLDFA {
       return false;
     }
 
+    // Check for IP address (valid special case)
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain)) {
+      return true;
+    }
+
     // Check for valid domain format
     // Must have at least one dot and valid TLD
     if (domain.includes('.')) {
@@ -182,18 +187,17 @@ export class URLDFA {
       const tld = parts[parts.length - 1].toLowerCase();
       
       // TLD must be at least 2 characters and alphanumeric (letters and numbers)
-      // Changed from /^[a-z]+$/i to /^[a-z0-9]+$/i to support numeric TLDs
       if (tld.length >= 2 && /^[a-z0-9]+$/i.test(tld)) {
         // Also ensure the domain part before TLD is not empty
         if (parts.length >= 2 && parts[parts.length - 2].length > 0) {
-          return true;
+          // MODIFICATION: Reject purely numeric domains (except IP addresses already handled above)
+          // At least one part must contain a letter
+          const hasLetter = parts.some(part => /[a-z]/i.test(part));
+          if (hasLetter) {
+            return true;
+          }
         }
       }
-    }
-
-    // Check for IP address
-    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain)) {
-      return true;
     }
 
     return false;
