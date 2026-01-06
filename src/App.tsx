@@ -49,6 +49,12 @@ function App() {
     }
   };
 
+  const formatLabel = (key: string) => {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase());
+};
+
   return (
     <div className="app-container">
       <div className="content-wrapper">
@@ -125,11 +131,11 @@ function App() {
                   </div>
                   <div className="progress-bar">
                     <div 
-                      className="progress-fill progress-blue"
-                      style={{ width: `${hybrid.dfaScore}%` }}
-                    />
-                  </div>
+                        className={`progress-fill progress-${hybrid.riskLevel.toLowerCase()}`}
+                        style={{ width: `${hybrid.dfaScore}%` }}
+                      />
                 </div>
+              </div>
               </div>
 
               {/* Detected Patterns */}
@@ -161,7 +167,7 @@ function App() {
                 <div className="features-grid">
                   {Object.entries(hybrid.features).map(([key, value]: [string, any]) => (
                     <div key={key} className="feature-item">
-                      <div className="feature-label">{key}</div>
+                      <div className="feature-label">{formatLabel(key)}</div>
                       <div className="feature-value">{String(value)}</div>
                     </div>
                   ))}

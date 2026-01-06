@@ -171,16 +171,17 @@ body {
 .risk-banner {
   padding: 1.5rem;
   border-left: 4px solid;
+  margin-bottom: 1.5rem;
 }
 
 .risk-banner.risk-critical {
   background: #fef2f2;
-  border-color: #900c0c;
+  border-color: #e41616;
 }
 
 .risk-banner.risk-high {
   background: #fef2f2;
-  border-color: #e6420b
+  border-color: #e6420b;
 }
 
 .risk-banner.risk-medium {
@@ -235,7 +236,11 @@ body {
 
 /* Text Colors */
 .text-red-600 {
-  color: #dc2626;
+  color: #be0303;
+}
+
+.text-orange-600 {
+  color: #dc5d26;
 }
 
 .text-yellow-600 {
@@ -257,12 +262,18 @@ body {
   gap: 1.5rem;
   padding: 1.5rem;
   border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
 }
 
+
 .score-card {
-  background: #f8fafc;
+  padding: 1.5rem;
   border-radius: 0.5rem;
-  padding: 1rem;
+  /* background: #f8fafc; */
+  border: 0.888px solid #aacbcd49;
+  background: rgba(255, 255, 255, 0.49);
+  backdrop-filter: blur(10.12082576751709px);
+  /* gap: 0.5rem; */
 }
 
 .score-card-label {
@@ -307,8 +318,12 @@ body {
   background: #2563eb;
 }
 
+.progress-critical {
+  background: #e41616;
+}
+
 .progress-high {
-  background: #dc2626;
+  background: #e6420b;
 }
 
 .progress-medium {
@@ -330,10 +345,11 @@ body {
 }
 
 .section-title {
-  font-size: 1.125rem;
+  font-size: 1.2rem;
   font-weight: bold;
   color: #1e293b;
   margin-bottom: 1rem;
+  text-align: center;
 }
 
 /* Patterns List */
@@ -346,9 +362,12 @@ body {
 .pattern-item {
   display: flex;
   gap: 0.75rem;
-  background: #f8fafc;
+  /* background: #f8fafc; */
   border-radius: 0.5rem;
   padding: 1rem;
+  border: 0.888px solid #aacbcd49;
+  background: rgba(255, 255, 255, 0.49);
+  backdrop-filter: blur(10.12082576751709px);
 }
 
 .pattern-icon {
@@ -388,9 +407,12 @@ body {
 }
 
 .feature-item {
-  background: #f8fafc;
+  /* background: #f8fafc; */
   border-radius: 0.5rem;
   padding: 1rem;
+  border: 0.888px solid #aacbcd49;
+  background: rgba(255, 255, 255, 0.49);
+  backdrop-filter: blur(10.12082576751709px);
 }
 
 .feature-label {
@@ -469,6 +491,10 @@ body {
 /* Responsive Design */
 @media (max-width: 768px) {
   .main-content {
+    padding: 1.5rem, 1rem;
+  }
+
+  .results-container {
     padding: 1rem;
   }
 
