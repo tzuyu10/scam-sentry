@@ -171,7 +171,7 @@ body {
 .risk-banner {
   padding: 1.5rem;
   border-left: 4px solid;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .risk-banner.risk-critical {
@@ -260,6 +260,8 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 
@@ -270,7 +272,7 @@ body {
   border: 0.888px solid #aacbcd49;
   background: rgba(255, 255, 255, 0.49);
   backdrop-filter: blur(10.12082576751709px);
-  /* gap: 0.5rem; */
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
@@ -334,7 +336,7 @@ body {
 /* Sections */
 .section {
   padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(170, 203, 205, 0.5);
 }
 
 .section:last-child {
