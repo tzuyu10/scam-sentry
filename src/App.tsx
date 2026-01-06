@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShieldAlert, Shield, AlertTriangle, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { scanMessage } from './utils/utils';
 import { hybridAnalyze } from './utils/hybridScorer';
 import type { ScanResult } from './types/types';
@@ -69,7 +69,7 @@ function App() {
               rows={6}
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Paste any suspicious SMS, email, or chat message here for analysis... up to 1000 characters."
+              placeholder="Paste any suspicious SMS, or chat message here for analysis... up to 1000 characters."
               className="message-input"
             />
 
@@ -118,7 +118,7 @@ function App() {
               {/* Detailed Scores */}
               <div className="scores-grid">
                 <div className="score-card">
-                  <div className="score-card-label">DFA Pattern Score</div>
+                  <div className="score-card-label">Pattern Score</div>
                   <div className="score-card-value">
                     <span className="score-value">{hybrid.dfaScore}</span>
                     <span className="score-max">/ 100</span>
