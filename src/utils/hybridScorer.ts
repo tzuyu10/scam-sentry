@@ -16,9 +16,6 @@ interface FeatureVector {
   averageWeight: number;
 }
 
-/**
- * Build feature vector from DFA output
- */
 function extractFeatures(
   scan: ScanResult,
   text: string
@@ -29,7 +26,6 @@ function extractFeatures(
     categories.add(m.category);
   }
 
-  // Trim totalWeight to 2 decimal places
   const totalWeight = parseFloat(
     scan.matches.reduce((s, m) => s + m.weight, 0).toFixed(2)
   );
@@ -52,14 +48,9 @@ function extractFeatures(
   };
 }
 
-/**
- * Hybrid score = DFA score (no modifications)
- * The DFA already handles all scoring logic internally
- */
 export function hybridAnalyze(scan: ScanResult, text: string) {
   const features = extractFeatures(scan, text);
 
-  // Use DFA score directly - no enhancements or modifications
   const dfaScore = parseFloat(scan.score.toFixed(2));
   const hybridScore = dfaScore;
 
@@ -69,7 +60,6 @@ export function hybridAnalyze(scan: ScanResult, text: string) {
   else if (hybridScore >= 35) riskLevel = 'MEDIUM';
   else riskLevel = 'LOW';
 
-  // Calculate confidence
   const matchDensity = text.length > 0 
     ? parseFloat((features.totalMatches / (text.length / 10)).toFixed(2))
     : 0;
@@ -84,11 +74,10 @@ export function hybridAnalyze(scan: ScanResult, text: string) {
 
   return {
     dfaScore,
-    enhancedScore: dfaScore, // Same as DFA score
-    hybridScore,  // Same as DFA score
+    enhancedScore: dfaScore,
+    hybridScore, 
     riskLevel,
     features,
-    // Additional detailed info (set to neutral values)
     categoryMultiplier: 1.0,
     combinationBonus: 0,
     confidence,
@@ -107,9 +96,6 @@ export function hybridAnalyze(scan: ScanResult, text: string) {
   };
 }
 
-/**
- * Get human-readable explanation of the score
- */
 export function explainScore(result: ReturnType<typeof hybridAnalyze>): string {
   const parts: string[] = [];
   

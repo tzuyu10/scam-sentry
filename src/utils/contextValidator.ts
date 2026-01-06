@@ -95,9 +95,7 @@ function isSingleWordPattern(pattern: string): boolean {
  * Reduces false positives for actual bank/service notifications.
  */
 function isLegitimateContext(
-  match: Match, 
   originalText: string,
-  allMatches: Match[]
 ): boolean {
   const textLower = originalText.toLowerCase();
   
@@ -327,7 +325,7 @@ function adjustMatchWeight(
   }
   
   // 3. Penalize if in legitimate context
-  if (isLegitimateContext(match, originalText, allMatches)) {
+  if (isLegitimateContext(originalText)) {
     adjustedWeight *= 0.50; // Increased penalty from 0.6
   }
   

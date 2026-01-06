@@ -1,489 +1,259 @@
 import type { Match } from '../types/types';
 
-/**
- * Explicit URLDFA: Character-by-Character DFA with Regex-Assisted Transitions
- * 
- * Formal Definition: M = (Q, Σ, δ, q₀, F, λ)
- * Where:
- * - Q = finite set of states (explicitly defined)
- * - Σ = {a-z, 0-9, '.', '/', ':', '?', '=', '-', '_'} input alphabet
- * - δ: Q × Σ → Q explicit transition function
- * - q₀ = q0 (initial state)
- * - F = accepting states with output patterns
- * - λ: F → {weight, category, urlType} output function
- * 
- * Key Design:
- * 1. Processes input CHARACTER-BY-CHARACTER
- * 2. Uses explicit state transitions (not just regex)
- * 3. Regex patterns used for VALIDATION only, not primary detection
- * 4. Each character advances the state machine explicitly
- */
-
-interface DFAState {
-  id: string;
-  isAccepting: boolean;
-  urlType?: 'protocol' | 'domain' | 'path' | 'param' | 'ip' | 'shortener';
-  baseWeight?: number;
-  transitions: Map<string, DFAState>; // δ: explicit transition function
-  buffer: string; // Accumulated characters for pattern matching
-}
-
 interface URLMatch extends Match {
   urlType: string;
   characteristics: string[];
 }
+type State = 0 | 1 | 2 | 3;
+
+const State = {
+  INIT: 0 as State,
+  DOMAIN: 1 as State,
+  PATH: 2 as State,
+  QUERY: 3 as State
+} as const;
 
 export class URLDFA {
-  // Q: Set of all states
-  private states: Map<string, DFAState> = new Map();
-  
-  // q₀: Initial state
-  private initialState!: DFAState;
-  
-  // F: Set of accepting states
-  private acceptingStates: Set<DFAState> = new Set();
-  
-  // Pattern lookup tables (for validation, not primary detection)
   private suspiciousTLDs = ['tk', 'ml', 'ga', 'gq', 'cf', 'xyz', 'top', 'click', 'online', 'site'];
   private shorteners = ['bit.ly', 'tinyurl.com', 'tinyurl', 't.co', 'goo.gl', 'cutt.ly', 'rb.gy', 'ow.ly', 'is.gd'];
   private financialKeywords = ['gcash', 'bpi', 'bdo', 'bank', 'paymaya', 'metrobank', 'unionbank', 'security-bank'];
   private suspiciousPaths = ['verify', 'login', 'secure', 'account', 'update', 'confirm', 'auth'];
-  private suspiciousParams = ['verify'  , 'token', 'otp', 'confirm', 'code', 'auth', 'validate'];
+  private suspiciousParams = ['verify', 'token', 'otp', 'confirm', 'code', 'auth', 'validate'];
 
-  constructor() {
-    this.buildDFA();
-  }
-
-  /**
-   * Build the explicit DFA structure
-   */
-  private buildDFA(): void {
-    // Create initial state q0
-    this.initialState = this.createState('q0', false);
-    
-    // Create accepting states (F)
-    this.createState('q_http', true, 'protocol', 0.60);
-    this.createState('q_https', true, 'protocol', 0.50);
-    this.createState('q_domain', true, 'domain', 0.50);
-    this.createState('q_shortener', true, 'shortener', 0.78);
-    this.createState('q_suspicious_tld', true, 'domain', 0.82);
-    this.createState('q_path', true, 'path', 0.65);
-    this.createState('q_suspicious_path', true, 'path', 0.70);
-    this.createState('q_param', true, 'param', 0.75);
-    this.createState('q_ip', true, 'ip', 0.90);
-    this.createState('q_url_body', false); // Intermediate state for URL body
-    
-    // Build transition function δ (done during scanning for flexibility)
-  }
-
-  /**
-   * Create a state and add to state set Q
-   */
-  private createState(
-    id: string, 
-    isAccepting: boolean, 
-    urlType?: string, 
-    baseWeight?: number
-  ): DFAState {
-    const state: DFAState = {
-      id,
-      isAccepting,
-      urlType: urlType as any,
-      baseWeight,
-      transitions: new Map(),
-      buffer: ''
-    };
-    
-    this.states.set(id, state);
-    
-    if (isAccepting) {
-      this.acceptingStates.add(state);
-    }
-    
-    return state;
-  }
-
-  /**
-   * Main scan function - CHARACTER-BY-CHARACTER processing
-   */
   scan(text: string): URLMatch[] {
     const matches: URLMatch[] = [];
     let i = 0;
 
     while (i < text.length) {
-      // Start from initial state for each potential match
-      let currentState = this.initialState;
-      let matchStart = i;
-      let lastAcceptingState: DFAState | null = null;
-      let lastAcceptingEnd = i;
-      let buffer = '';
-
-      // Process characters one by one
-      while (i < text.length) {
-        const char = text[i];
-        
-        // Try to transition based on current character
-        const nextState = this.delta(currentState, char, buffer + char, text, i);
-        
-        if (!nextState) {
-          // No valid transition, check if we have a match
-          break;
-        }
-
-        buffer += char;
-        currentState = nextState;
-        currentState.buffer = buffer;
-        i++;
-
-        // Track last accepting state
-        if (currentState.isAccepting) {
-          lastAcceptingState = currentState;
-          lastAcceptingEnd = i;
-        }
-
-        // Check for URL boundary characters that end the match
-        if (this.isURLBoundary(char, text[i])) {
-          break;
-        }
-      }
-
-      // Emit match if we reached an accepting state
-      if (lastAcceptingState && buffer.length > 0) {
-        const characteristics = this.analyzeCharacteristics(buffer);
-        const weight = this.calculateWeight(lastAcceptingState, characteristics);
-        
-        matches.push({
-          pattern: buffer.substring(0, Math.min(50, buffer.length)) + (buffer.length > 50 ? '...' : ''),
-          weight,
-          category: 'URL',
-          start: matchStart,
-          end: lastAcceptingEnd,
-          urlType: lastAcceptingState.urlType || 'unknown',
-          characteristics
-        });
-
-        // Move to end of match
-        i = lastAcceptingEnd;
+      const match = this.tryMatchURL(text, i);
+      
+      if (match) {
+        matches.push(match);
+        i = match.end;
       } else {
-        // No match, advance by 1
-        i = matchStart + 1;
+        i++;
       }
     }
 
     return this.deduplicateMatches(matches);
   }
 
-  /**
-   * δ: Explicit Transition Function Q × Σ → Q
-   * Determines next state based on current state and input character
-   */
-  private delta(
-    currentState: DFAState, 
-    char: string, 
-    buffer: string,
-    fullText: string,
-    position: number
-  ): DFAState | null {
-    const charLower = char.toLowerCase();
+  private tryMatchURL(text: string, startPos: number): URLMatch | null {
+    let state = State.INIT;
+    let buffer = '';
+    let i = startPos;
+    let hasProtocol = false;
+    let hasDomain = false;
 
-    // From q0 (initial state)
-    if (currentState.id === 'q0') {
-      // Branch 1: Protocol detection
-      if (charLower === 'h') {
-        // Check if this might be http/https
-        return this.transitionToProtocol(buffer, fullText, position);
+    while (i < text.length) {
+      const char = text[i];
+      const nextChar = text[i + 1] || '';
+
+      // State transitions
+      switch (state) {
+        case State.INIT:
+          // Check for protocol start
+          if (this.startsWithProtocol(text, i)) {
+            const protocol = text.substring(i, i + 7).toLowerCase().startsWith('https://') ? 'https://' : 'http://';
+            buffer = protocol;
+            i += protocol.length;
+            state = State.DOMAIN;
+            hasProtocol = true;
+            continue;
+          }
+          // Check for domain start (no protocol)
+          else if (this.isAlphaNumeric(char)) {
+            buffer = char;
+            i++;
+            state = State.DOMAIN;
+            continue;
+          }
+          // No URL found
+          return null;
+
+        case State.DOMAIN:
+          // Valid domain characters
+          if (this.isAlphaNumeric(char) || char === '.' || char === '-') {
+            buffer += char;
+            i++;
+            
+            // Check if we have a complete domain
+            if (this.hasValidDomain(buffer, hasProtocol)) {
+              hasDomain = true;
+            }
+            continue;
+          }
+          // Path separator
+          else if (char === '/' && hasDomain) {
+            buffer += char;
+            i++;
+            state = State.PATH;
+            continue;
+          }
+          // Query separator
+          else if (char === '?' && hasDomain) {
+            buffer += char;
+            i++;
+            state = State.QUERY;
+            continue;
+          }
+          // End of URL
+          else {
+            break;
+          }
+
+        case State.PATH:
+          // Valid path characters
+          if (this.isValidPathChar(char)) {
+            buffer += char;
+            i++;
+            continue;
+          }
+          // Query separator
+          else if (char === '?') {
+            buffer += char;
+            i++;
+            state = State.QUERY;
+            continue;
+          }
+          // End of URL
+          else {
+            break;
+          }
+
+        case State.QUERY:
+          // Valid query characters
+          if (this.isValidQueryChar(char)) {
+            buffer += char;
+            i++;
+            continue;
+          }
+          // End of URL
+          else {
+            break;
+          }
       }
-      
-      // Branch 2: Domain detection (for standalone domains)
-      if (this.isAlphaNumeric(charLower)) {
-        return this.transitionToDomain(buffer, fullText, position);
-      }
-      
-      // Branch 5: IP detection
-      if (this.isDigit(charLower)) {
-        return this.transitionToIP(buffer, fullText, position);
-      }
-      
-      return null;
+
+      // If we get here, we've hit a boundary
+      break;
     }
 
-    // From protocol states (http/https detection)
-    if (currentState.id === 'q_protocol_building') {
-      return this.continueProtocol(buffer, fullText, position, char);
-    }
-
-    // From URL body state
-    if (currentState.id === 'q_url_body') {
-      return this.continueURLBody(buffer, fullText, position, char);
-    }
-
-    // From domain building state
-    if (currentState.id === 'q_domain_building') {
-      return this.continueDomain(buffer, fullText, position, char);
-    }
-
-    // From IP building state
-    if (currentState.id === 'q_ip_building') {
-      return this.continueIP(buffer, fullText, position, char);
-    }
-
-    // Default: check if character is valid URL character
-    if (this.isValidURLChar(charLower)) {
-      return currentState; // Stay in current state
+    // Validate and return match
+    if (hasDomain && buffer.length > 0) {
+      return this.createMatch(buffer, startPos, i, hasProtocol);
     }
 
     return null;
   }
 
   /**
-   * Transition to protocol detection branch
+   * Check if text starts with http:// or https:// at position
    */
-  private transitionToProtocol(buffer: string, fullText: string, position: number): DFAState | null {
-    // Look ahead to check if this is http:// or https://
-    const remaining = fullText.substring(position);
-    
-    if (/^https?:\/\//i.test(remaining)) {
-      // Create or get protocol building state
-      let state = this.states.get('q_protocol_building');
-      if (!state) {
-        state = this.createState('q_protocol_building', false);
-      }
-      return state;
-    }
-    
-    return null;
+  private startsWithProtocol(text: string, pos: number): boolean {
+    const remaining = text.substring(pos).toLowerCase();
+    return remaining.startsWith('http://') || remaining.startsWith('https://');
   }
 
   /**
-   * Continue protocol detection
+   * Check if buffer contains a valid domain
    */
-  private continueProtocol(buffer: string, fullText: string, position: number, char: string): DFAState | null {
-    const bufferLower = buffer.toLowerCase();
-    
-    // Check if we've completed http:// or https://
-    if (bufferLower === 'http://' || bufferLower === 'https://') {
-      // Transition to URL body state
-      let state = this.states.get('q_url_body');
-      if (!state) {
-        state = this.createState('q_url_body', false);
+  private hasValidDomain(buffer: string, hasProtocol: boolean): boolean {
+    // Extract domain part
+    let domain = buffer;
+    if (hasProtocol) {
+      const protocolEnd = buffer.indexOf('://');
+      if (protocolEnd !== -1) {
+        domain = buffer.substring(protocolEnd + 3);
       }
-      return state;
     }
-    
-    // Still building protocol
-    if (/^https?:\/\//i.test(bufferLower + char)) {
-      return this.states.get('q_protocol_building')!;
-    }
-    
-    return null;
-  }
 
-  /**
-   * Continue URL body processing
-   */
-  private continueURLBody(buffer: string, fullText: string, position: number, char: string): DFAState | null {
-    const charLower = char.toLowerCase();
-    
-    // Valid URL characters
-    if (this.isValidURLChar(charLower)) {
-      // Check what we're building
-      const urlPart = buffer.substring(buffer.indexOf('://') + 3);
+    // Remove path/query if present
+    domain = domain.split('/')[0].split('?')[0];
+
+    // Check for valid domain format
+    // Must have at least one dot and valid TLD
+    if (domain.includes('.')) {
+      const parts = domain.split('.');
+      const tld = parts[parts.length - 1];
       
-      // Check for path separator
-      if (charLower === '/') {
-        // Transitioning to path
-        return this.states.get('q_url_body')!;
+      // TLD must be at least 2 characters and all letters
+      if (tld.length >= 2 && /^[a-z]+$/i.test(tld)) {
+        return true;
       }
-      
-      // Check for query separator
-      if (charLower === '?') {
-        // Transitioning to query parameters
-        return this.states.get('q_url_body')!;
-      }
-      
-      // Continue building URL body
-      return this.states.get('q_url_body')!;
     }
-    
-    // End of URL - determine accepting state based on buffer content
-    return this.determineAcceptingState(buffer);
+
+    // Check for IP address
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain)) {
+      return true;
+    }
+
+    return false;
   }
 
-  /**
-   * Transition to domain detection branch
-   */
-  private transitionToDomain(buffer: string, fullText: string, position: number): DFAState | null {
-    // Check if this looks like a domain
-    const remaining = fullText.substring(position);
-    
-    // Look for domain pattern: alphanumeric + dots
-    if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}/i.test(remaining)) {
-      let state = this.states.get('q_domain_building');
-      if (!state) {
-        state = this.createState('q_domain_building', false);
-      }
-      return state;
-    }
-    
-    return null;
-  }
+  private createMatch(buffer: string, start: number, end: number, hasProtocol: boolean): URLMatch {
+    const characteristics = this.analyzeCharacteristics(buffer);
+    const urlType = this.determineURLType(buffer, characteristics);
+    const weight = this.calculateWeight(buffer, characteristics, hasProtocol);
 
-  /**
-   * Continue domain building
-   */
-  private continueDomain(buffer: string, fullText: string, position: number, char: string): DFAState | null {
-    const charLower = char.toLowerCase();
-    
-    // Valid domain characters
-    if (this.isAlphaNumeric(charLower) || charLower === '.' || charLower === '-') {
-      // Check if we have a complete domain
-      if (this.isCompleteDomain(buffer + char)) {
-        return this.determineAcceptingState(buffer + char);
-      }
-      
-      return this.states.get('q_domain_building')!;
-    }
-    
-    // Check if we've built a valid domain
-    if (this.isCompleteDomain(buffer)) {
-      return this.determineAcceptingState(buffer);
-    }
-    
-    return null;
+    return {
+      pattern: buffer.length > 50 ? buffer.substring(0, 50) + '...' : buffer,
+      weight: parseFloat(weight.toFixed(2)),
+      category: 'URL',
+      start,
+      end,
+      urlType,
+      characteristics
+    };
   }
-
-  /**
-   * Transition to IP detection branch
-   */
-  private transitionToIP(buffer: string, fullText: string, position: number): DFAState | null {
-    // Look ahead for IP pattern
-    const remaining = fullText.substring(position);
-    
-    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/i.test(remaining)) {
-      let state = this.states.get('q_ip_building');
-      if (!state) {
-        state = this.createState('q_ip_building', false);
-      }
-      return state;
-    }
-    
-    return null;
-  }
-
-  /**
-   * Continue IP building
-   */
-  private continueIP(buffer: string, fullText: string, position: number, char: string): DFAState | null {
-    const charLower = char.toLowerCase();
-    
-    // Valid IP characters
-    if (this.isDigit(charLower) || charLower === '.') {
-      // Check if we have a complete IP
-      if (this.isCompleteIP(buffer + char)) {
-        return this.states.get('q_ip')!;
-      }
-      
-      return this.states.get('q_ip_building')!;
-    }
-    
-    return null;
-  }
-
-  /**
-   * Determine accepting state based on buffer content
-   */
-  private determineAcceptingState(buffer: string): DFAState | null {
-    const bufferLower = buffer.toLowerCase();
-    
-    // Check for protocol
-    if (bufferLower.startsWith('http://')) {
-      return this.states.get('q_http')!;
-    }
-    if (bufferLower.startsWith('https://')) {
-      return this.states.get('q_https')!;
-    }
-    
-    // Check for IP
-    if (this.isCompleteIP(buffer)) {
-      return this.states.get('q_ip')!;
-    }
-    
-    // Check for shortener
-    if (this.isShortenerDomain(buffer)) {
-      return this.states.get('q_shortener')!;
-    }
-    
-    // Check for suspicious TLD
-    if (this.hasSuspiciousTLD(buffer)) {
-      return this.states.get('q_suspicious_tld')!;
-    }
-    
-    // Check for suspicious path
-    if (this.hasSuspiciousPath(buffer)) {
-      return this.states.get('q_suspicious_path')!;
-    }
-    
-    // Check for suspicious param
-    if (this.hasSuspiciousParam(buffer)) {
-      return this.states.get('q_param')!;
-    }
-    
-    // Default to domain
-    if (this.isCompleteDomain(buffer)) {
-      return this.states.get('q_domain')!;
-    }
-    
-    return null;
-  }
-
-  /**
-   * Analyze characteristics of matched URL
-   */
-  private analyzeCharacteristics(buffer: string): string[] {
+  
+  private analyzeCharacteristics(url: string): string[] {
     const characteristics: string[] = [];
-    const bufferLower = buffer.toLowerCase();
-
-    if (this.hasSuspiciousTLD(bufferLower)) {
+    const urlLower = url.toLowerCase();
+    if (this.suspiciousTLDs.some(tld => new RegExp(`\\.${tld}(?:[/?#]|$)`).test(urlLower))) {
       characteristics.push('suspicious_tld');
     }
 
-    if (this.isShortenerDomain(bufferLower)) {
+    if (this.shorteners.some(s => urlLower.includes(s))) {
       characteristics.push('url_shortener');
     }
 
-    if (this.isCompleteIP(bufferLower)) {
+    if (/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(url)) {
       characteristics.push('ip_address');
     }
 
-    if (this.hasFinancialKeyword(bufferLower) && bufferLower.startsWith('http://')) {
+    if (urlLower.startsWith('http://') && this.financialKeywords.some(k => urlLower.includes(k))) {
       characteristics.push('http_financial');
     }
 
-    if (this.hasSuspiciousPath(bufferLower)) {
+    if (this.suspiciousPaths.some(p => new RegExp(`/${p}(?:[/?#]|$)`, 'i').test(urlLower))) {
       characteristics.push('suspicious_path');
     }
 
-    if (this.hasSuspiciousParam(bufferLower)) {
+    if (this.suspiciousParams.some(p => new RegExp(`[?&]${p}=`, 'i').test(urlLower))) {
       characteristics.push('suspicious_param');
     }
 
     return characteristics;
   }
 
-  /**
-   * Calculate final weight based on state and characteristics
-   */
-  private calculateWeight(state: DFAState, characteristics: string[]): number {
-    let weight = state.baseWeight || 0.50;
+  private determineURLType(url: string, characteristics: string[]): string {
+    if (characteristics.includes('ip_address')) return 'ip';
+    if (characteristics.includes('url_shortener')) return 'shortener';
+    if (characteristics.includes('suspicious_tld')) return 'suspicious_domain';
+    if (url.toLowerCase().startsWith('https://')) return 'https';
+    if (url.toLowerCase().startsWith('http://')) return 'http';
+    return 'domain';
+  }
 
-    // Apply characteristic-based weight adjustments
+  private calculateWeight(url: string, characteristics: string[], hasProtocol: boolean): number {
+    let weight = 0.50;
     const charWeights: Record<string, number> = {
-      'suspicious_tld': 0.82,
-      'url_shortener': 0.78,
       'ip_address': 0.90,
       'http_financial': 0.92,
-      'suspicious_path': 0.70,
-      'suspicious_param': 0.75
+      'suspicious_tld': 0.82,
+      'url_shortener': 0.78,
+      'suspicious_param': 0.75,
+      'suspicious_path': 0.70
     };
 
     for (const char of characteristics) {
@@ -491,123 +261,36 @@ export class URLDFA {
         weight = Math.max(weight, charWeights[char]);
       }
     }
+    if (url.toLowerCase().startsWith('http://')) {
+      weight = Math.max(weight, 0.60);
+    }
 
     return weight;
   }
 
-  /**
-   * Helper: Check if character is alphanumeric
-   */
+  // Character validation helpers
   private isAlphaNumeric(char: string): boolean {
     return /[a-z0-9]/i.test(char);
   }
 
-  /**
-   * Helper: Check if character is digit
-   */
-  private isDigit(char: string): boolean {
-    return /\d/.test(char);
+  private isValidPathChar(char: string): boolean {
+    return /[a-z0-9.\-_~/?#@!$&'()*+,;=%]/i.test(char);
   }
 
-  /**
-   * Helper: Check if character is valid URL character
-   */
-  private isValidURLChar(char: string): boolean {
-    return /[a-z0-9.\-_~:/?#[\]@!$&'()*+,;=%]/i.test(char);
+  private isValidQueryChar(char: string): boolean {
+    return /[a-z0-9.\-_~/?#@!$&'()*+,;=%]/i.test(char);
   }
 
-  /**
-   * Helper: Check if at URL boundary
-   */
-  private isURLBoundary(currentChar: string, nextChar: string): boolean {
-    if (!nextChar) return true;
-    
-    // Whitespace boundaries
-    if (/\s/.test(nextChar)) return true;
-    
-    // Punctuation boundaries (but not valid URL chars)
-    if (/[<>"'\]]/.test(nextChar)) return true;
-    
-    return false;
-  }
-
-  /**
-   * Helper: Check if buffer is complete domain
-   */
-  private isCompleteDomain(buffer: string): boolean {
-    return /^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/i.test(buffer);
-  }
-
-  /**
-   * Helper: Check if buffer is complete IP
-   */
-  private isCompleteIP(buffer: string): boolean {
-    return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(buffer);
-  }
-
-  /**
-   * Helper: Check if domain is a shortener
-   */
-  private isShortenerDomain(buffer: string): boolean {
-    return this.shorteners.some(shortener => 
-      buffer.toLowerCase().includes(shortener.toLowerCase())
-    );
-  }
-
-  /**
-   * Helper: Check if has suspicious TLD
-   */
-  private hasSuspiciousTLD(buffer: string): boolean {
-    return this.suspiciousTLDs.some(tld => 
-      new RegExp(`\\.${tld}(?:[/?#]|$)`, 'i').test(buffer)
-    );
-  }
-
-  /**
-   * Helper: Check if has financial keywords
-   */
-  private hasFinancialKeyword(buffer: string): boolean {
-    return this.financialKeywords.some(keyword => 
-      buffer.toLowerCase().includes(keyword)
-    );
-  }
-
-  /**
-   * Helper: Check if has suspicious path
-   */
-  private hasSuspiciousPath(buffer: string): boolean {
-    return this.suspiciousPaths.some(path => 
-      new RegExp(`/${path}(?:[/?#]|$)`, 'i').test(buffer)
-    );
-  }
-
-  /**
-   * Helper: Check if has suspicious param
-   */
-  private hasSuspiciousParam(buffer: string): boolean {
-    return this.suspiciousParams.some(param => 
-      new RegExp(`[?&]${param}=`, 'i').test(buffer)
-    );
-  }
-
-  /**
-   * Deduplicate overlapping matches
-   */
   private deduplicateMatches(matches: URLMatch[]): URLMatch[] {
+    if (matches.length === 0) return [];
+    matches.sort((a, b) => {
+      if (a.start !== b.start) return a.start - b.start;
+      return (b.end - b.start) - (a.end - a.start);
+    });
+
     const result: URLMatch[] = [];
-    const processedRanges = new Set<string>();
-
-    // Sort by start position
-    matches.sort((a, b) => a.start - b.start);
-
+    
     for (const match of matches) {
-      const key = `${match.start}-${match.end}`;
-      
-      if (processedRanges.has(key)) {
-        continue;
-      }
-
-      // Check for overlaps
       const overlaps = result.some(existing => 
         (match.start >= existing.start && match.start < existing.end) ||
         (match.end > existing.start && match.end <= existing.end) ||
@@ -616,31 +299,9 @@ export class URLDFA {
 
       if (!overlaps) {
         result.push(match);
-        processedRanges.add(key);
       }
     }
 
     return result;
-  }
-
-  /**
-   * Diagnostic: Get all states
-   */
-  getStates(): DFAState[] {
-    return Array.from(this.states.values());
-  }
-
-  /**
-   * Diagnostic: Get accepting states
-   */
-  getAcceptingStates(): DFAState[] {
-    return Array.from(this.acceptingStates);
-  }
-
-  /**
-   * Diagnostic: Get initial state
-   */
-  getInitialState(): DFAState {
-    return this.initialState;
   }
 }

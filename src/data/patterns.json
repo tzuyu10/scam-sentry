@@ -28,8 +28,13 @@
         { "keyword": "agad", "weight": 0.58 },
         { "keyword": "mabilis", "weight": 0.55 },
         { "keyword": "act fast", "weight": 0.70 },
-        { "keyword": "limited offer", "weight": 0.68 }
-        
+        { "keyword": "limited offer", "weight": 0.68 },
+        { "keyword": "bonus inside", "weight": 0.65 },
+        { "keyword": "no deposit", "weight": 0.62 },
+        { "keyword": "limited slot", "weight": 0.72 },
+        { "keyword": "tara na", "weight": 0.60 }
+
+
       ]
     },
     "FINANCIAL": {
@@ -66,7 +71,17 @@
         { "keyword": "pera", "weight": 0.58 },
         { "keyword": "cash", "weight": 0.50 },
         { "keyword": "money", "weight": 0.48 },
-        { "keyword": "libre", "weight": 0.58 }
+        { "keyword": "libre", "weight": 0.58 },
+        { "keyword": "premyo", "weight": 0.60 },
+        { "keyword": "load", "weight": 0.55 },
+        { "keyword": "winningplus!", "weight": 0.60 },
+        { "keyword": "winningplus", "weight": 0.60 },
+        { "keyword": "special offer", "weight": 0.50 },
+        { "keyword": "exclusive offer", "weight": 0.52 },
+        { "keyword": "pondo", "weight": 0.62 },
+        { "keyword": "deposit", "weight": 0.50 },
+        { "keyword": "gawin nating", "weight": 0.50 },
+        { "keyword": "lucky roulette", "weight": 0.65 }
       ]
     },
     "PHISHING": {
@@ -142,7 +157,9 @@
         { "keyword": "official", "weight": 0.45 },
         { "keyword": "authorized", "weight": 0.48 },
         { "keyword": "shopee", "weight": 0.55 },
-        { "keyword": "lazada", "weight": 0.55 }
+        { "keyword": "lazada", "weight": 0.55 },
+        { "keyword": "pagcor", "weight": 0.75 }
+
 
     ]
     },
