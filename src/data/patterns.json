@@ -32,7 +32,11 @@
         { "keyword": "bonus inside", "weight": 0.65 },
         { "keyword": "no deposit", "weight": 0.62 },
         { "keyword": "limited slot", "weight": 0.72 },
-        { "keyword": "tara na", "weight": 0.60 }
+        { "keyword": "tara na", "weight": 0.60 },
+        { "keyword": "sweldo", "weight": 0.55},
+        { "keyword": "download", "weight": 0.50 },
+        { "keyword": "click", "weight": 0.48 },
+        { "keyword": "join", "weight": 0.45 }
 
 
       ]
@@ -71,7 +75,7 @@
         { "keyword": "pera", "weight": 0.58 },
         { "keyword": "cash", "weight": 0.50 },
         { "keyword": "money", "weight": 0.48 },
-        { "keyword": "libre", "weight": 0.58 },
+        { "keyword": "libre", "weight": 0.60 },
         { "keyword": "premyo", "weight": 0.60 },
         { "keyword": "load", "weight": 0.55 },
         { "keyword": "winningplus!", "weight": 0.60 },
@@ -81,7 +85,8 @@
         { "keyword": "pondo", "weight": 0.62 },
         { "keyword": "deposit", "weight": 0.50 },
         { "keyword": "gawin nating", "weight": 0.50 },
-        { "keyword": "lucky roulette", "weight": 0.65 }
+        { "keyword": "lucky roulette", "weight": 0.65 },
+        { "keyword": "enjoy", "weight": 0.52 }
       ]
     },
     "PHISHING": {

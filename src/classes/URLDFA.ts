@@ -14,8 +14,8 @@ const State = {
 } as const;
 
 export class URLDFA {
-  private suspiciousTLDs = ['tk', 'ml', 'ga', 'gq', 'cf', 'xyz', 'top', 'click', 'online', 'site'];
-  private shorteners = ['bit.ly', 'tinyurl.com', 'tinyurl', 't.co', 'goo.gl', 'cutt.ly', 'rb.gy', 'ow.ly', 'is.gd'];
+  private suspiciousTLDs = ['tk', 'ml', 'ga', 'gq', 'cf', 'xyz', 'top', 'click', 'online', 'site', 'icu'];
+  private shorteners = ['bit.ly', 'tinyurl.com', 'tinyurl', 't.co', 'goo.gl', 'cutt.ly', 'rb.gy', 'ow.ly', 'is.gd', 'winplus10.icu'];
   private financialKeywords = ['gcash', 'bpi', 'bdo', 'bank', 'paymaya', 'metrobank', 'unionbank', 'security-bank'];
   private suspiciousPaths = ['verify', 'login', 'secure', 'account', 'update', 'confirm', 'auth'];
   private suspiciousParams = ['verify', 'token', 'otp', 'confirm', 'code', 'auth', 'validate'];
@@ -54,7 +54,7 @@ export class URLDFA {
         case State.INIT:
           // Check for protocol start
           if (this.startsWithProtocol(text, i)) {
-            const protocol = text.substring(i, i + 7).toLowerCase().startsWith('https://') ? 'https://' : 'http://';
+            const protocol = text.substring(i, i + 8).toLowerCase().startsWith('https://') ? 'https://' : 'http://';
             buffer = protocol;
             i += protocol.length;
             state = State.DOMAIN;
@@ -72,7 +72,7 @@ export class URLDFA {
           return null;
 
         case State.DOMAIN:
-          // Valid domain characters
+          // Valid domain characters (including digits for domains)
           if (this.isAlphaNumeric(char) || char === '.' || char === '-') {
             buffer += char;
             i++;
@@ -170,15 +170,24 @@ export class URLDFA {
     // Remove path/query if present
     domain = domain.split('/')[0].split('?')[0];
 
+    // Domain must not be empty
+    if (!domain || domain.length === 0) {
+      return false;
+    }
+
     // Check for valid domain format
     // Must have at least one dot and valid TLD
     if (domain.includes('.')) {
       const parts = domain.split('.');
-      const tld = parts[parts.length - 1];
+      const tld = parts[parts.length - 1].toLowerCase();
       
-      // TLD must be at least 2 characters and all letters
-      if (tld.length >= 2 && /^[a-z]+$/i.test(tld)) {
-        return true;
+      // TLD must be at least 2 characters and alphanumeric (letters and numbers)
+      // Changed from /^[a-z]+$/i to /^[a-z0-9]+$/i to support numeric TLDs
+      if (tld.length >= 2 && /^[a-z0-9]+$/i.test(tld)) {
+        // Also ensure the domain part before TLD is not empty
+        if (parts.length >= 2 && parts[parts.length - 2].length > 0) {
+          return true;
+        }
       }
     }
 
@@ -209,11 +218,22 @@ export class URLDFA {
   private analyzeCharacteristics(url: string): string[] {
     const characteristics: string[] = [];
     const urlLower = url.toLowerCase();
-    if (this.suspiciousTLDs.some(tld => new RegExp(`\\.${tld}(?:[/?#]|$)`).test(urlLower))) {
+    
+    // Extract domain for more accurate matching
+    let domain = urlLower;
+    if (urlLower.includes('://')) {
+      domain = urlLower.split('://')[1].split('/')[0].split('?')[0];
+    } else {
+      domain = urlLower.split('/')[0].split('?')[0];
+    }
+    
+    // Check suspicious TLDs
+    if (this.suspiciousTLDs.some(tld => new RegExp(`\\.${tld}(?:[/?#]|$)`).test(urlLower) || domain.endsWith(`.${tld}`))) {
       characteristics.push('suspicious_tld');
     }
 
-    if (this.shorteners.some(s => urlLower.includes(s))) {
+    // Check URL shorteners (must match domain, not just substring)
+    if (this.shorteners.some(s => domain === s || domain.startsWith(s + '/') || domain.startsWith(s + '?'))) {
       characteristics.push('url_shortener');
     }
 
