@@ -1,8 +1,5 @@
 import type { ScanResult, Category } from '../types/types';
 
-/**
- * Feature vector extracted from DFA results
- */
 interface FeatureVector {
   totalMatches: number;
   totalWeight: number;
