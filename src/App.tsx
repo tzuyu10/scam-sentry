@@ -143,17 +143,19 @@ function App() {
                 <h3 className="section-title">Detected Scam Patterns</h3>
                 {scan.matches.length > 0 ? (
                   <div className="patterns-list">
-                    {scan.matches.map((m: any, i: number) => (
-                      <div key={i} className="pattern-item">
-                        <div className="pattern-icon">
-                          <AlertTriangle className="w-5 h-5" />
+                    {scan.matches
+                    .filter((m: any) => m.category !== 'LEGIT')
+                      .map((m: any, i: number) => (
+                        <div key={i} className="pattern-item">
+                          <div className="pattern-icon">
+                            <AlertTriangle className="w-5 h-5" />
+                          </div>
+                          <div className="pattern-details">
+                            <div className="pattern-category">{m.category}</div>
+                            <div className="pattern-text">"{m.pattern}"</div>
+                            <div className="pattern-weight">Weight: {m.weight.toFixed(2)}</div>
+                          </div>
                         </div>
-                        <div className="pattern-details">
-                          <div className="pattern-category">{m.category}</div>
-                          <div className="pattern-text">"{m.pattern}"</div>
-                          <div className="pattern-weight">Weight: {m.weight.toFixed(2)}</div>
-                        </div>
-                      </div>
                     ))}
                   </div>
                 ) : (
