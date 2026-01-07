@@ -140,7 +140,7 @@ function App() {
 
               {/* Detected Patterns */}
               <div className="section">
-                <h3 className="section-title">Detected Scam Patterns</h3>
+                <h3 className="section-title">Detected Patterns</h3>
                 {scan.matches.length > 0 ? (
                   <div className="patterns-list">
                     {scan.matches.map((m: any, i: number) => (

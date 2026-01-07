@@ -108,7 +108,6 @@ export function scanMessage(msg: string): ExtendedScanResult {
     const results = dfa.scan(msg);
 
     for (const r of results) {
-      if (category === 'LEGIT') continue; // Skip legit patterns
       rawMatches.push({
         pattern: r.pattern,
         weight: parseFloat(r.weight.toFixed(2)),
