@@ -26,13 +26,15 @@ function extractFeatures(
     categories.add(m.category);
   }
 
-  const totalWeight = parseFloat(
-    scan.matches.reduce((s, m) => s + m.weight, 0).toFixed(2)
+  const totalWeight = Math.max(
+    0,
+    parseFloat(
+      scan.matches.reduce((s, m) => s + m.weight, 0).toFixed(2)
+    )
   );
 
   const averageWeight = scan.matches.length > 0
-    ? parseFloat((totalWeight / scan.matches.length).toFixed(2))
-    : 0;
+    ? parseFloat((totalWeight / scan.matches.length).toFixed(2)) : 0;
 
   return {
     totalMatches: scan.matches.length,

@@ -187,7 +187,7 @@ export class URLDFA {
       const tld = parts[parts.length - 1].toLowerCase();
       
       // TLD must be at least 2 characters and alphanumeric (letters and numbers)
-      if (tld.length >= 2 && /^[a-z0-9]+$/i.test(tld)) {
+      if (tld.length >= 2 && /^[a-z0-9]+$/i.test(tld) && /[a-z]/i.test(tld)) {
         // Also ensure the domain part before TLD is not empty
         if (parts.length >= 2 && parts[parts.length - 2].length > 0) {
           // MODIFICATION: Reject purely numeric domains (except IP addresses already handled above)
