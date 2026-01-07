@@ -4,7 +4,8 @@ export type Category =
   | 'FINANCIAL'
   | 'PHISHING'
   | 'IMPERSONATION'
-  | 'URL';
+  | 'URL'
+  | 'LEGIT';
 
 export type CategoryWeights = Record<Category, number>;
 

@@ -1,5 +1,3 @@
-// src/utils/utils.ts
-
 import patternsData from '../data/patterns.json';
 import { AhoCorasickDFA } from '../classes/AhoCorasickDFA';
 import { URLDFA } from '../classes/URLDFA';
@@ -31,6 +29,7 @@ interface PatternsJSON {
     PHISHING: PatternCategory;
     IMPERSONATION: PatternCategory;
     URL: PatternCategory;
+    LEGIT: PatternCategory;
   };
 }
 
@@ -45,7 +44,8 @@ const dfaConfigs: DFAConfig[] = [
   { dfa: new AhoCorasickDFA(PATTERNS.URGENCY.patterns), category: 'URGENCY' },
   { dfa: new AhoCorasickDFA(PATTERNS.FINANCIAL.patterns), category: 'FINANCIAL' },
   { dfa: new AhoCorasickDFA(PATTERNS.PHISHING.patterns), category: 'PHISHING' },
-  { dfa: new AhoCorasickDFA(PATTERNS.IMPERSONATION.patterns), category: 'IMPERSONATION' }
+  { dfa: new AhoCorasickDFA(PATTERNS.IMPERSONATION.patterns), category: 'IMPERSONATION' },
+  { dfa: new AhoCorasickDFA(PATTERNS.LEGIT.patterns), category: 'LEGIT' },
 ];
 
 const urlDFA = new URLDFA();
@@ -108,6 +108,7 @@ export function scanMessage(msg: string): ExtendedScanResult {
     const results = dfa.scan(msg);
 
     for (const r of results) {
+      if (category === 'LEGIT') continue; // Skip legit patterns
       rawMatches.push({
         pattern: r.pattern,
         weight: parseFloat(r.weight.toFixed(2)),
