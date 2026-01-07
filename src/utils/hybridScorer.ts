@@ -1,8 +1,5 @@
 import type { ScanResult, Category } from '../types/types';
 
-/**
- * Feature vector extracted from DFA results
- */
 interface FeatureVector {
   totalMatches: number;
   totalWeight: number;
@@ -17,7 +14,7 @@ interface FeatureVector {
 }
 
 function extractFeatures(
-  scan: ScanResult,
+  scan: ScanResult & { hasURL?: number; isLegitimateContext?: boolean },
   text: string
 ): FeatureVector {
   const categories = new Set<Category>();
@@ -26,15 +23,13 @@ function extractFeatures(
     categories.add(m.category);
   }
 
-  const totalWeight = Math.max(
-    0,
-    parseFloat(
-      scan.matches.reduce((s, m) => s + m.weight, 0).toFixed(2)
-    )
+  const totalWeight = parseFloat(
+    scan.matches.reduce((s, m) => s + m.weight, 0).toFixed(2)
   );
 
   const averageWeight = scan.matches.length > 0
-    ? parseFloat((totalWeight / scan.matches.length).toFixed(2)) : 0;
+    ? parseFloat((totalWeight / scan.matches.length).toFixed(2))
+    : 0;
 
   return {
     totalMatches: scan.matches.length,
@@ -50,17 +45,39 @@ function extractFeatures(
   };
 }
 
-export function hybridAnalyze(scan: ScanResult, text: string) {
+/**
+ * UPDATED RISK THRESHOLDS
+ * 
+ * Raised thresholds to reduce false positives:
+ * - CRITICAL: 80% → 85% (only truly dangerous messages)
+ * - HIGH: 60% → 70% (clear scam indicators)
+ * - MEDIUM: 35% → 45% (suspicious but not definitive)
+ * - LOW: < 45%
+ */
+export function hybridAnalyze(
+  scan: ScanResult & { hasURL?: number; isLegitimateContext?: boolean },
+  text: string
+) {
   const features = extractFeatures(scan, text);
-
   const dfaScore = parseFloat(scan.score.toFixed(2));
   const hybridScore = dfaScore;
 
+  // UPDATED: Balanced risk classification with clear separation
   let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  if (hybridScore >= 80) riskLevel = 'CRITICAL';
-  else if (hybridScore >= 60) riskLevel = 'HIGH';
-  else if (hybridScore >= 35) riskLevel = 'MEDIUM';
-  else riskLevel = 'LOW';
+  if (hybridScore >= 88) {       // RAISED from 83 → clear CRITICAL threshold
+    riskLevel = 'CRITICAL';
+  } else if (hybridScore >= 70) {
+    riskLevel = 'HIGH';
+  } else if (hybridScore >= 45) {
+    riskLevel = 'MEDIUM';
+  } else {
+    riskLevel = 'LOW';
+  }
+
+  // NEW: Override to LOW if legitimate context detected
+  if (scan.isLegitimateContext && hybridScore < 70) {
+    riskLevel = 'LOW';
+  }
 
   const matchDensity = text.length > 0 
     ? parseFloat((features.totalMatches / (text.length / 10)).toFixed(2))
@@ -83,6 +100,7 @@ export function hybridAnalyze(scan: ScanResult, text: string) {
     categoryMultiplier: 1.0,
     combinationBonus: 0,
     confidence,
+    isLegitimateContext: scan.isLegitimateContext || false,
     analysis: {
       categoriesDetected: features.uniqueCategories,
       totalMatches: features.totalMatches,
@@ -104,6 +122,10 @@ export function explainScore(result: ReturnType<typeof hybridAnalyze>): string {
   parts.push(`DFA Score: ${result.dfaScore}%`);
   parts.push(`Risk Level: ${result.riskLevel}`);
   parts.push(`Confidence: ${(result.confidence * 100).toFixed(0)}%`);
+  
+  if (result.isLegitimateContext) {
+    parts.push(`Note: Legitimate business communication detected`);
+  }
   
   const { flags } = result.analysis;
   const presentCategories = Object.entries(flags)
