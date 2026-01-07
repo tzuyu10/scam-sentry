@@ -195,9 +195,9 @@
         { "keyword": "locked account", "weight": 0.75 },
         { "keyword": "account locked", "weight": 0.75 },
         { "keyword": "complete verification", "weight": 0.72 },
-        { "keyword": "security alert", "weight": 0.60 },
+        { "keyword": "security alert", "weight": 0.70 },
         { "keyword": "verification code", "weight": 0.60 },
-        { "keyword": "security code", "weight": 0.60 },
+        { "keyword": "security code", "weight": 0.70 },
         { "keyword": "verify account", "weight": 0.65 },
         { "keyword": "update your account", "weight": 0.65 },
         { "keyword": "confirm your account", "weight": 0.65 },
@@ -495,9 +495,9 @@
         { "keyword": "share otp", "weight": -0.40 },
         { "keyword": "scam", "weight": -0.30 },
         { "keyword": "scams", "weight": -0.30 },
-        { "keyword": "wag iclick", "weight": -0.40 },
-        { "keyword": "wag i-click", "weight": -0.40 },
-        { "keyword": "huwag i-click", "weight": -0.40 }
+        { "keyword": "wag iclick", "weight": -0.60 },
+        { "keyword": "wag i-click", "weight": -0.60 },
+        { "keyword": "huwag i-click", "weight": -0.60 }
       ]
     }
   }
